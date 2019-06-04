@@ -33,12 +33,12 @@ class AdsController < ApplicationController
         render json: ad.as_json(:except => [:suppressed])
     end
 
-    CANDIDATE_PARAMS = Set.new(["states", "districts", "parties", "joined"]) 
+    CANDIDATE_PARAMS = Set.new(["states", "districts", "parties", "joined"])
     ADS_COLUMNS = [:impressions, :paid_for_by, :targets, :html, :lang, :id, "ads.created_at", :advertiser, :suppressed, :political_probability, :political, :not_political, :targeting, :title, :lower_page, :listbuilding_fundraising_proba]
     def index
         is_admin = false
 
-        ads = params.keys.any?{|key| CANDIDATE_PARAMS.include?(key)} ? Ad.joins(:candidate).where(lang: @lang) : Ad.where(lang: @lang) 
+        ads = params.keys.any?{|key| CANDIDATE_PARAMS.include?(key)} ? Ad.joins(:candidate).where(lang: @lang) : Ad.where(lang: @lang)
 
         if params[:poliprob] || params[:maxpoliprob] # order matters!
             ads = ads.unscope(:where).where(lang: @lang)
@@ -56,7 +56,7 @@ class AdsController < ApplicationController
 
         if params[:search]
             # to_englishtsvector("ads"."html") @@ to_englishtsquery($4)
-            ads = ads.where(@lang[0..2] == "de" ? "to_germantsvector(html) @@ to_germantsquery(?)" : "to_englishtsvector(html) @@ to_englishtsquery(?)", params[:search]) 
+            ads = ads.where(@lang[0..2] == "de" ? "to_germantsvector(html) @@ to_germantsquery(?)" : "to_englishtsvector(html) @@ to_englishtsquery(?)", params[:search])
         end
 
         # "advertisers=[\"Cathy+Myers\"]&targets=[{\"target\":\"Age\"}]&entities=[{\"entity\":\"Paul+Ryan\"}]"
@@ -78,7 +78,7 @@ class AdsController < ApplicationController
             states, districts = params[:districts].split(",").map{|dist| dist.split("-")}.transpose
             states.uniq!
             ads = ads.where(candidates: {
-                district: districts.size == 1 ? districts[0] : district, 
+                district: districts.size == 1 ? districts[0] : district,
                 state: states.size == 1 ? states[0] : states
                 })
         end
@@ -96,7 +96,7 @@ class AdsController < ApplicationController
         ads_page = ads.page((page_num.to_i || 0) + 1) # +1 here to mimic Rust behavior.
 
         resp = {}
-        # if params[:page].to_i > MAX_PAGE 
+        # if params[:page].to_i > MAX_PAGE
         #     resp["QUIT SCRAPING PLEASE"] = "Hi! Can you stop scraping our site? You're killin' my server. We have bulk data for download available here: https://www.propublica.org/datastore/dataset/political-advertisements-from-facebook . Same data as in these responses. Thanks! - Jeremy, jeremy.merrill@propublica.org"
         # end
 
@@ -114,7 +114,7 @@ class AdsController < ApplicationController
     MAX_PAGE = 50
     def persona
         @lang = "en-US"
-        ads = params.keys.any?{|key| CANDIDATE_PARAMS.include?(key)} ? Ad.joins(:candidate).where(lang: @lang) : Ad.where(lang: @lang) 
+        ads = params.keys.any?{|key| CANDIDATE_PARAMS.include?(key)} ? Ad.joins(:candidate).where(lang: @lang) : Ad.where(lang: @lang)
 
         ads = ads.unscope(:order)
         ads = ads.order("(CURRENT_DATE - created_at) / sqrt(greatest(targetedness, 1)) asc " )
@@ -122,7 +122,7 @@ class AdsController < ApplicationController
 
         raise(ActionController::BadRequest.new, "you've gotta specify at least one bucket") unless [:age_bucket, :politics_bucket, :location_bucket, :gender].any?{|bucket| params.include?(bucket) }
 
-        age_bucket_for_puts = 
+        age_bucket_for_puts =
         if params[:age_bucket] && params[:age_bucket] != "--"
             age = [[params[:age_bucket].to_i, 65].min, 13].max
 
@@ -144,14 +144,14 @@ class AdsController < ApplicationController
             state, city = params[:location_bucket].split(",")
             if state != "any state"
                 ads = ads.where("targets @> '[{\"target\": \"State\", \"segment\": \"#{state}\"}]' OR targets @> '[{\"target\": \"Region\", \"segment\": \"#{state}\"}]' OR targets @> '[{\"target\": \"Region\", \"segment\": \"United States\"}]'")
-                
+
                 ads = ads.where("(not targets @> '[{\"target\": \"City\"}]' OR targets @> '[{\"target\": \"City\", \"segment\": \"#{city}\"}]')") if city
             end
             loc_bucket_for_puts = "loc: #{state}, city: #{city}"
         else
             loc_bucket_for_puts = "loc: none"
         end
-        
+
         politics = params[:politics_bucket] == "neither liberal nor conservative" ? "apolitical" : params[:politics_bucket]
         if politics && POLITICAL_BUCKETS.include?(politics)
             # targets @> '[{"target":"Segment","segment":"US politics (conservative)"}]'
@@ -165,12 +165,12 @@ class AdsController < ApplicationController
                 # interests
                 " OR " + Ad.send(:sanitize_sql_for_conditions, [
                     POLITICAL_BUCKETS[politics][:interest].map{|seg| "targets @> ?"}.join(" or ")
-                ] + POLITICAL_BUCKETS[politics][:interest].map{|seg| "[{\"target\": \"Interest\", \"segment\": \"#{seg}\"}]" } ) + 
+                ] + POLITICAL_BUCKETS[politics][:interest].map{|seg| "[{\"target\": \"Interest\", \"segment\": \"#{seg}\"}]" } ) +
 
                 # non-politically-targeted ads
                 # No interest and no segment list, like, etc.
                 # Retargeting: recently near their business
-                " OR (not targets @> '[{\"target\": \"Interest\"}]' AND not targets @> '[{\"target\": \"List\"}]' AND not targets @> '[{\"target\": \"Like\"}]' AND not targets @> '[{\"target\": \"Segment\"}]' AND not targets @> '[{\"target\": \"Website\"}]' AND not targets @> '[{\"target\": \"Agency\"}]'  AND not targets @> '[{\"target\": \"Engaged with Content\"}]' AND not targets @> '[{\"target\": \"Activity on the Facebook Family\"}]' AND not targets @> '[{\"target\": \"Retargeting\", \"segment\": \"people who may be similar to their customers\"}]' ) OR (targets @> '[{\"target\": \"Retargeting\", \"segment\": \"recently near their business\"}]')"        
+                " OR (not targets @> '[{\"target\": \"Interest\"}]' AND not targets @> '[{\"target\": \"List\"}]' AND not targets @> '[{\"target\": \"Like\"}]' AND not targets @> '[{\"target\": \"Segment\"}]' AND not targets @> '[{\"target\": \"Website\"}]' AND not targets @> '[{\"target\": \"Agency\"}]'  AND not targets @> '[{\"target\": \"Engaged with Content\"}]' AND not targets @> '[{\"target\": \"Activity on the Facebook Family\"}]' AND not targets @> '[{\"target\": \"Retargeting\", \"segment\": \"people who may be similar to their customers\"}]' ) OR (targets @> '[{\"target\": \"Retargeting\", \"segment\": \"recently near their business\"}]')"
             )
             pol_bucket_for_puts = "pol: #{politics}"
         else
@@ -197,7 +197,7 @@ class AdsController < ApplicationController
 
         puts "#{age_bucket_for_puts}, #{loc_bucket_for_puts}, #{pol_bucket_for_puts}, #{gdr_bucket_for_puts}"
 
-        # race, we're not doing; 
+        # race, we're not doing;
         page_num = [params[:page].to_i || 0, MAX_PAGE].min
         ads_page = ads.page(page_num + 1).per(19)  # +1 here to mimic Rust behavior.
         resp = {}
@@ -230,7 +230,7 @@ class AdsController < ApplicationController
         political_ads_count = Ad.where(lang: @lang).count
 
         # last week's ratio of ads to political ads
-        daily_political_ratio = Ad.unscoped.where(lang: @lang).where("date(created_at) > now() - interval '1 week' ").group("date(created_at)").select("count(*) as total, sum(CASE political_probability > 0.7 AND NOT suppressed WHEN true THEN 1 ELSE 0 END) as political, date(created_at) as date").map{|ad| [ad.date, ad.political.to_f / ad.total, ad.total]}
+        daily_political_ratio = Ad.unscoped.where(lang: @lang).where("date(created_at) > now() - interval '1 week' ").group("date(created_at)").select("count(*) as total, sum(CASE political_probability > 0.7 AND NOT suppressed WHEN true THEN 1 ELSE 0 END) as political, date(created_at) as date").map{|ad| [ad.date, ad.political.to_f / ad.total, ad.total]}.sort_by{|date, ratio, total| date}
 
         # rolling weekly ratio of ads to political ads
         weekly_political_ratio = Ad.unscoped.where(lang: @lang).where("date(created_at) > now() - interval '2 months' ").group("extract(week from created_at), extract(year from created_at)").select("count(*) as total, sum(CASE political_probability > 0.7 AND NOT suppressed WHEN true THEN 1 ELSE 0 END) as political, extract(week from created_at) as week, extract(year from created_at) as year").sort_by{|ad| ad.year.to_s + ad.week.to_s }.sort_by{|ad| ad.year.to_s + ad.week.to_i.to_s.rjust(2, '0') }.map{|ad| [ad.week, ad.political.to_f / ad.total, ad.total]}
@@ -271,7 +271,7 @@ class AdsController < ApplicationController
         first_unioned_query = Ad.unscoped.joins('LEFT OUTER JOIN candidates ON candidates.facebook_url = ads.lower_page').where(ads_by_state_candidates_sql).union(:all, Ad.unscoped.where(ads_mentioning_state_candidates_sql))
         unioned_query = Ad.arel_table.create_table_alias(first_unioned_query, :ads).to_sql.gsub(" UNION ALL ", " UNION ALL " + ads.unscoped.where(ads_targeting_region_or_state_sql).to_sql + " UNION ALL " )
         ads = Ad.from(unioned_query).distinct
-        
+
         # fr_en = Ad.unscoped.where("lang = 'fr-CA'").union(:all, Ad.unscoped.where("lang = 'en-CA'"))
         # Ad.from(Ad.arel_table.create_table_alias(fr_en, :ads))
 
@@ -290,7 +290,7 @@ class AdsController < ApplicationController
     # for the homepage's Feltron-style summary
     HOMEPAGE_STATS_CACHE_PATH = lambda {|lang| "#{Rails.root}/tmp/homepage_stats-#{lang}.json"}
     def homepage_stats
-        
+
         render file: HOMEPAGE_STATS_CACHE_PATH.call(@lang), content_type: "application/json", layout: false and return if File.exists?(HOMEPAGE_STATS_CACHE_PATH.call(@lang)) && (Time.now - File.mtime(HOMEPAGE_STATS_CACHE_PATH.call(@lang)) < 60 * 60 ) # just read it from disk if cached thingy exists and is less than 60 minutes old.
         stats = Ad.calculate_homepage_stats(@lang)
         File.open(HOMEPAGE_STATS_CACHE_PATH.call(@lang), 'w'){|f| f.write(JSON.dump(stats))}
@@ -300,7 +300,7 @@ class AdsController < ApplicationController
 
     def write_homepage_stats
         raise 400 unless params[:secret] == "asdfasdf"
-        
+
         File.open(HOMEPAGE_STATS_CACHE_PATH.call(@lang), 'w'){|f| f.write(JSON.dump(Ad.calculate_homepage_stats(@lang)))}
         render text: "ok"
     end
@@ -325,46 +325,46 @@ class AdsController < ApplicationController
         render json: ads.unscope(:order).where("advertiser is not null").group("advertiser").order("count_all desc").count.map{|k, v| {advertiser: k, count: v} }
     end
 
-    def by_targets    
+    def by_targets
         ads = Ad.where(lang: @lang)
         render json: ads.unscope(:order).where("targets is not null").group("jsonb_array_elements(targets)->>'target'").order("count_all desc").count.map{|k, v| {target: k, count: v} }
     end
 
-    def by_segments    
-        render json: Ad.connection.select_rows("select concat(target, ' → ', segment), count(*) as count from (select jsonb_array_elements(targets)->>'segment' as segment, jsonb_array_elements(targets)->>'target' as target from ads WHERE lang = $1 AND political_probability > 0.70 AND suppressed = false) q group by segment, target having count(*) > 2 order by count desc;", nil, [[nil, @lang]]).map{|k, v| {segment: k, count: v} } 
+    def by_segments
+        render json: Ad.connection.select_rows("select concat(target, ' → ', segment), count(*) as count from (select jsonb_array_elements(targets)->>'segment' as segment, jsonb_array_elements(targets)->>'target' as target from ads WHERE lang = $1 AND political_probability > 0.70 AND suppressed = false) q group by segment, target having count(*) > 2 order by count desc;", nil, [[nil, @lang]]).map{|k, v| {segment: k, count: v} }
     end
 
 
     # N.B.: important difference between advertisers / segmentss
     # this week/month advertisers shows you advertisers (page names) we FIRST saw this week/month
     # this week/month segments/targets shows you segments/targets that we saw AT ALLL this week/month
-    def this_week_advertisers    
+    def this_week_advertisers
         ads = Ad.where(lang: @lang)
         render json: ads.unscope(:order).where("advertiser is not null").group("advertiser").having("min(created_at) > NOW() - interval '1 week'").order("count_all desc").count.map{|k, v| {advertiser: k, count: v} }
     end
 
-    def this_week_targets    
+    def this_week_targets
         ads = Ad.where(lang: @lang).where("created_at > NOW() - interval '1 week'")
         render json: ads.unscope(:order).where("targets is not null").group("jsonb_array_elements(targets)->>'target'").order("count_all desc").count.map{|k, v| {target: k, count: v} }
     end
 
-    def this_week_segments    
-        render json: Ad.connection.select_rows("select concat(target, ' → ', segment), count(*) as count from (select jsonb_array_elements(targets)->>'segment' as segment, jsonb_array_elements(targets)->>'target' as target from ads WHERE lang = $1 AND political_probability > 0.70 AND suppressed = false and created_at > NOW() - interval '1 week') q group by segment, target having count(*) > 2 order by count desc;", nil, [[nil, @lang]]).map{|k, v| {segment: k, count: v} } 
+    def this_week_segments
+        render json: Ad.connection.select_rows("select concat(target, ' → ', segment), count(*) as count from (select jsonb_array_elements(targets)->>'segment' as segment, jsonb_array_elements(targets)->>'target' as target from ads WHERE lang = $1 AND political_probability > 0.70 AND suppressed = false and created_at > NOW() - interval '1 week') q group by segment, target having count(*) > 2 order by count desc;", nil, [[nil, @lang]]).map{|k, v| {segment: k, count: v} }
     end
 
 
-    def this_month_advertisers    
+    def this_month_advertisers
         ads = Ad.where(lang: @lang)
         render json: ads.unscope(:order).where("advertiser is not null").group("advertiser").having("min(created_at) > NOW() - interval '1 month'").order("count_all desc").count.map{|k, v| {advertiser: k, count: v} }
     end
 
-    def this_month_targets    
+    def this_month_targets
         ads = Ad.where(lang: @lang).where("created_at > NOW() - interval '1 month'")
         render json: ads.unscope(:order).where("targets is not null").group("jsonb_array_elements(targets)->>'target'").order("count_all desc").count.map{|k, v| {target: k, count: v} }
     end
 
-    def this_month_segments    
-        render json: Ad.connection.select_rows("select concat(target, ' → ', segment), count(*) as count from (select jsonb_array_elements(targets)->>'segment' as segment, jsonb_array_elements(targets)->>'target' as target from ads WHERE lang = $1 AND political_probability > 0.70 AND suppressed = false and created_at > NOW() - interval '1 month') q group by segment, target having count(*) > 2 order by count desc;", nil, [[nil, @lang]]).map{|k, v| {segment: k, count: v} } 
+    def this_month_segments
+        render json: Ad.connection.select_rows("select concat(target, ' → ', segment), count(*) as count from (select jsonb_array_elements(targets)->>'segment' as segment, jsonb_array_elements(targets)->>'target' as target from ads WHERE lang = $1 AND political_probability > 0.70 AND suppressed = false and created_at > NOW() - interval '1 month') q group by segment, target having count(*) > 2 order by count desc;", nil, [[nil, @lang]]).map{|k, v| {segment: k, count: v} }
     end
 
 
@@ -394,11 +394,11 @@ class AdsController < ApplicationController
 
     POLITICAL_BUCKETS = {
     "liberal" => {
-        segment: [ 
+        segment: [
             "US politics (liberal)",  # segment
             "Likely to engage with political content (liberal)",  # segment
             "US politics (very liberal)",  # segment
-        ],  
+        ],
         interest: [
             "Democratic Party (United States)",
             "Bernie Sanders",
@@ -425,7 +425,7 @@ class AdsController < ApplicationController
         ]
     },
     "apolitical" => {
-        segment: [        
+        segment: [
             "US politics (moderate)",
             "Likely to engage with political content (moderate)",
         ],
@@ -486,12 +486,12 @@ class AdsController < ApplicationController
         render :advertiser
     end
 
-    private 
+    private
 
-    def set_lang 
+    def set_lang
         @lang = params[:lang] || http_accept_language.user_preferred_languages.find{|lang| lang.match(/..-../)} || "en-US"
         if @lang == "*-CA"
             @lang = ["en-CA", "fr-CA"]
-        end    
+        end
     end
 end
