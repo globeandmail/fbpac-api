@@ -36,6 +36,9 @@ class AdsController < ApplicationController
     CANDIDATE_PARAMS = Set.new(["states", "districts", "parties", "joined"])
     ADS_COLUMNS = [:impressions, :paid_for_by, :targets, :html, :lang, :id, "ads.created_at", :advertiser, :suppressed, :political_probability, :political, :not_political, :targeting, :title, :lower_page, :listbuilding_fundraising_proba]
     def index
+
+        expires_in(1.hours, public: true, must_revalidate: true)
+        
         is_admin = false
 
         ads = params.keys.any?{|key| CANDIDATE_PARAMS.include?(key)} ? Ad.joins(:candidate).where(lang: @lang) : Ad.where(lang: @lang)
