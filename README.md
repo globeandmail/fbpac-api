@@ -20,12 +20,12 @@ It's structured to be a drop-in replacement for some pieces of the Rust API… a
 8. Try http://localhost:3000/fbpac-api/ads/by_advertisers again, log in, then you should see more JSON.
 
 
-###### Testing / comparison with the Rust API
+##### Testing / comparison with the Rust API
 
 `rake test` runs the tests. Be sure to write new ones for new features!
 
 
-###### How to create new users
+##### How to create new users
 
 Unlike the Rust API, we have real user accounts with a unique password per account. When a partner signs up, log into the production console with `RAILS_ENV=production rails c` and create them a user account with `User.create!({:email => "you@example.com", :password => "111111", :password_confirmation => "111111" })` (there is no GUI for account creation). Then they should be good to go.
 
