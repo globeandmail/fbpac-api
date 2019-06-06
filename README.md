@@ -1,6 +1,6 @@
 # fbpac-api
 
-A Ruby on Rails API for the Facebook Political Ad Collector site.
+This is a Ruby on Rails API for the [Facebook Political Ad Collector](https://github.com/globeandmail/facebook-political-ads/). To run the entire FBPAC setup, you'll also need to run [fbpac-backend](https://github.com/globeandmail/fbpac-backend) and [fbpac-extension](https://github.com/globeandmail/fbpac-extension), plus [fbpac-classifier](https://github.com/globeandmail/fbpac-classifier) if you're deploying a production version and want to classify your own ads.
 
 First, this will mirror _most_ of the admin-facing functions of the Rust API, then adding new stuff more nimbly to respond to what we want to present to partners and readers.
 
