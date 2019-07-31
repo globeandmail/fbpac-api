@@ -30,7 +30,7 @@ class Ad < ActiveRecord::Base
     end
 
     def self.advertiser_report(lang, advertiser)
-			lang_sql_condition = @lang == '*-CA' ? "lang in ('en-CA', 'fr-CA')" : "lang = '#{@lang}'"
+			lang_sql_condition = lang == '*-CA' ? "lang in ('en-CA', 'fr-CA')" : "lang = '#{lang}'"
       individual_methods = Ad.connection.execute("select target, segment, count(*) as count from (select jsonb_array_elements(targets)->>'segment' as segment, jsonb_array_elements(targets)->>'target' as target from ads WHERE #{lang_sql_condition} and  #{Ad.send(:sanitize_sql_for_conditions, ["ads.advertiser = ?", [advertiser]] )}) q  group by segment, target order by count desc").to_a
       combined_methods = Ad.unscope(:order).where(advertiser: advertiser).group(:targets).count.to_a.sort_by{|a, b| -b}
       {individual_methods: individual_methods, combined_methods: combined_methods}
