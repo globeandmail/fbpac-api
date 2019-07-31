@@ -38,7 +38,7 @@ class AdsController < ApplicationController
     def index
 
         expires_in(1.hours, public: true, must_revalidate: true)
-        
+
         is_admin = false
 
         ads = params.keys.any?{|key| CANDIDATE_PARAMS.include?(key)} ? Ad.joins(:candidate).where(lang: @lang) : Ad.where(lang: @lang)
@@ -482,7 +482,7 @@ class AdsController < ApplicationController
 
     def advertiser
         @advertiser = params[:advertiser]
-        both = Ad.advertiser_report(@advertiser)
+        both = Ad.advertiser_report(@lang, @advertiser)
         @combined_methods = both[:combined_methods]
         @individual_methods = both[:individual_methods]
 

@@ -22,20 +22,21 @@ class Ad < ActiveRecord::Base
 
         {
             user_count: USERS_COUNT,
-            political_ads_total: political_ads_count, 
-            political_ads_today: Rails.env.development? ? 123 : political_ads_today, 
+            political_ads_total: political_ads_count,
+            political_ads_today: Rails.env.development? ? 123 : political_ads_today,
             # weekly_political_ratio: weekly_political_ratio,
             political_ads_per_day: cumulative_political_ads_per_week
         }
     end
 
-    def self.advertiser_report(advertiser)
-      individual_methods = Ad.connection.execute("select target, segment, count(*) as count from (select jsonb_array_elements(targets)->>'segment' as segment, jsonb_array_elements(targets)->>'target' as target from ads WHERE lang = 'en-US' and  #{Ad.send(:sanitize_sql_for_conditions, ["ads.advertiser = ?", [advertiser]] )}) q  group by segment, target order by count desc").to_a
+    def self.advertiser_report(lang, advertiser)
+			lang_sql_condition = @lang == '*-CA' ? "lang in ('en-CA', 'fr-CA')" : "lang = '#{@lang}'"
+      individual_methods = Ad.connection.execute("select target, segment, count(*) as count from (select jsonb_array_elements(targets)->>'segment' as segment, jsonb_array_elements(targets)->>'target' as target from ads WHERE #{lang_sql_condition} and  #{Ad.send(:sanitize_sql_for_conditions, ["ads.advertiser = ?", [advertiser]] )}) q  group by segment, target order by count desc").to_a
       combined_methods = Ad.unscope(:order).where(advertiser: advertiser).group(:targets).count.to_a.sort_by{|a, b| -b}
       {individual_methods: individual_methods, combined_methods: combined_methods}
     end
 
-    def public_url 
+    def public_url
         "https://projects.propublica.org/facebook-ads/ad/#{id}"
     end
 
