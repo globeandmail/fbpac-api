@@ -16,7 +16,7 @@ It's structured to be a drop-in replacement for some pieces of the Rust API… a
 4. `bundle exec rails s`
 5. Visit http://localhost:3000/fbpac-api/ads -- you should see a big pile of JSON.
 6. Visit http://localhost:3000/fbpac-api/ads/by_advertisers -- you should see a log in page.
-7. Create a user for yourself, locally, by running this in `rails c`. `User.create!({:email => "you@example.com", :password => "111111", :password_confirmation => "111111" })`.
+7. Create a user for yourself, locally, by running this in `rails c`. `Partner.create!({:email => "you@example.com", :password => "111111", :password_confirmation => "111111" })`.
 8. Try http://localhost:3000/fbpac-api/ads/by_advertisers again, log in, then you should see more JSON.
 
 
@@ -27,7 +27,7 @@ It's structured to be a drop-in replacement for some pieces of the Rust API… a
 
 ##### How to create new users
 
-Unlike the Rust API, we have real user accounts with a unique password per account. When a partner signs up, log into the production console with `RAILS_ENV=production rails c` and create them a user account with `User.create!({:email => "you@example.com", :password => "111111", :password_confirmation => "111111" })` (there is no GUI for account creation). Then they should be good to go.
+Unlike the Rust API, we have real user accounts with a unique password per account. When a partner signs up, log into the production console with `RAILS_ENV=production rails c` and create them a user account with `Partner.create!({:email => "you@example.com", :password => "111111", :password_confirmation => "111111" })` (there is no GUI for account creation). Then they should be good to go.
 
 
 ### Deployment
