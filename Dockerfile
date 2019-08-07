@@ -1,10 +1,11 @@
 FROM ruby:2.3
 
-RUN apt-get update
+RUN apt-get update && \
+apt-get install -y default-libmysqlclient-dev \
+libpq-dev \
+libcurl4-openssl-dev \
+nodejs && rm -rf /var/lib/apt/lists/*
 
-# application dependencies
-RUN apt-get install -y default-libmysqlclient-dev libpq-dev libcurl4-openssl-dev
-RUN apt-get install -y nodejs
 RUN echo "gem: --no-ri --no-rdoc" > ~/.gemrc
 
 WORKDIR /web/
