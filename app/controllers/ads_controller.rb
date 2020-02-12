@@ -95,6 +95,13 @@ class AdsController < ApplicationController
             ads = ads.where(candidates: {party: [parties.map(&:id).compact]})
         end
 
+        if params[:missingpaidforby]
+            ads = ads.where("paid_for_by is null")
+        end
+        if params[:paidforby]
+            ads = ads.where(paid_for_by: params[:paid_for_by])
+        end
+
         page_num = [params[:page].to_i || 0, MAX_PAGE].min
         ads_page = ads.page((page_num.to_i || 0) + 1) # +1 here to mimic Rust behavior.
 
@@ -112,6 +119,7 @@ class AdsController < ApplicationController
         resp[:total] = ads.count
         render json: resp
     end
+
 
     GENDERS_FB = ["men", "women"]
     MAX_PAGE = 50
@@ -337,28 +345,70 @@ class AdsController < ApplicationController
         render json: Ad.connection.select_rows("select concat(target, ' → ', segment), count(*) as count from (select jsonb_array_elements(targets)->>'segment' as segment, jsonb_array_elements(targets)->>'target' as target from ads WHERE lang = $1 AND political_probability > 0.70 AND suppressed = false) q group by segment, target having count(*) > 2 order by count desc;", nil, [[nil, @lang]]).map{|k, v| {segment: k, count: v} }
     end
 
+    def by_paid_for_by
+        ads = Ad.where(lang: @lang)
+        render json: ads.unscope(:order).group("paid_for_by").order("count_all desc").count.map{|k, v| {paid_for_by: k, count: v} }
+    end
+
 
     # N.B.: important difference between advertisers / segmentss
     # this week/month advertisers shows you advertisers (page names) we FIRST saw this week/month
     # this week/month segments/targets shows you segments/targets that we saw AT ALLL this week/month
-    def this_week_advertisers
+    def this_week_advertisers_first_seen
         ads = Ad.where(lang: @lang)
         render json: ads.unscope(:order).where("advertiser is not null").group("advertiser").having("min(created_at) > NOW() - interval '1 week'").order("count_all desc").count.map{|k, v| {advertiser: k, count: v} }
     end
+    def this_week_targets_first_seen
+        ads = Ad.where(lang: @lang)
+        render json: ads.unscope(:order).where("targets is not null").group("jsonb_array_elements(targets)->>'target'").having("min(created_at) > NOW() - interval '1 week'").order("count_all desc").count.map{|k, v| {target: k, count: v} }
+    end
+    def this_week_segments_first_seen # test 2019
+        render json: Ad.connection.select_rows("select concat(target, ' → ', segment), count(*) as count from (select jsonb_array_elements(targets)->>'segment' as segment, jsonb_array_elements(targets)->>'target' as target, created_at from ads WHERE lang = $1 AND political_probability > 0.70 AND suppressed = false) q group by segment, target having count(*) > 2 and min(created_at) > NOW() - interval '1 week' order by count desc;", nil, [[nil, @lang]]).map{|k, v| {segment: k, count: v} }
+    end
+    def this_week_paid_for_by_first_seen # test 2019
+        ads = Ad.where(lang: @lang)
+        render json: ads.unscope(:order).group("paid_for_by").having("min(created_at) > NOW() - interval '1 week'").order("count_all desc").count.map{|k, v| {paid_for_by: k, count: v} }
+    end
 
+
+    def this_week_advertisers # test 2019
+        ads = Ad.where(lang: @lang).where("created_at > NOW() - interval '1 week'")
+        render json: ads.unscope(:order).where("advertiser is not null").group("advertiser").order("count_all desc").count.map{|k, v| {advertiser: k, count: v} }
+    end
     def this_week_targets
         ads = Ad.where(lang: @lang).where("created_at > NOW() - interval '1 week'")
         render json: ads.unscope(:order).where("targets is not null").group("jsonb_array_elements(targets)->>'target'").order("count_all desc").count.map{|k, v| {target: k, count: v} }
     end
-
     def this_week_segments
         render json: Ad.connection.select_rows("select concat(target, ' → ', segment), count(*) as count from (select jsonb_array_elements(targets)->>'segment' as segment, jsonb_array_elements(targets)->>'target' as target from ads WHERE lang = $1 AND political_probability > 0.70 AND suppressed = false and created_at > NOW() - interval '1 week') q group by segment, target having count(*) > 2 order by count desc;", nil, [[nil, @lang]]).map{|k, v| {segment: k, count: v} }
     end
+    def this_week_paid_for_bys # test 2019
+        ads = Ad.where(lang: @lang).where("created_at > NOW() - interval '1 week'")
+        render json: ads.unscope(:order).group("paid_for_by").order("count_all desc").count.map{|k, v| {paid_for_by: k, count: v} }
+    end
 
 
-    def this_month_advertisers
+    def this_month_advertisers_first_seen
         ads = Ad.where(lang: @lang)
         render json: ads.unscope(:order).where("advertiser is not null").group("advertiser").having("min(created_at) > NOW() - interval '1 month'").order("count_all desc").count.map{|k, v| {advertiser: k, count: v} }
+    end
+    def this_month_targets_first_seen # TODO2019
+        ads = Ad.where(lang: @lang)
+        render json: ads.unscope(:order).where("targets is not null").group("jsonb_array_elements(targets)->>'target'").having("min(created_at) > NOW() - interval '1 month'").order("count_all desc").count.map{|k, v| {target: k, count: v} }
+
+    end
+    def this_month_segments_first_seen # TODO2019
+        render json: Ad.connection.select_rows("select concat(target, ' → ', segment), count(*) as count from (select jsonb_array_elements(targets)->>'segment' as segment, jsonb_array_elements(targets)->>'target' as target, created_at from ads WHERE lang = $1 AND political_probability > 0.70 AND suppressed = false) q group by segment, target having count(*) > 2 and min(created_at) > NOW() - interval '1 month' order by count desc;", nil, [[nil, @lang]]).map{|k, v| {segment: k, count: v} }
+    end
+    def this_month_paid_for_bys_first_seen
+        ads = Ad.where(lang: @lang)
+        render json: ads.unscope(:order).group("paid_for_by").having("min(created_at) > NOW() - interval '1 month'").order("count_all desc").count.map{|k, v| {paid_for_by: k, count: v} }
+    end
+
+
+    def this_month_advertisers # TODO2019
+        ads = Ad.where(lang: @lang).where("created_at > NOW() - interval '1 month'")
+        render json: ads.unscope(:order).where("advertiser is not null").group("advertiser").order("count_all desc").count.map{|k, v| {advertiser: k, count: v} }
     end
 
     def this_month_targets
@@ -369,6 +419,21 @@ class AdsController < ApplicationController
     def this_month_segments
         render json: Ad.connection.select_rows("select concat(target, ' → ', segment), count(*) as count from (select jsonb_array_elements(targets)->>'segment' as segment, jsonb_array_elements(targets)->>'target' as target from ads WHERE lang = $1 AND political_probability > 0.70 AND suppressed = false and created_at > NOW() - interval '1 month') q group by segment, target having count(*) > 2 order by count desc;", nil, [[nil, @lang]]).map{|k, v| {segment: k, count: v} }
     end
+    def this_month_paid_for_bys # test 2019
+        ads = Ad.where(lang: @lang).where("created_at > NOW() - interval '1 month'")
+        render json: ads.unscope(:order).group("paid_for_by").order("count_all desc").count.map{|k, v| {paid_for_by: k, count: v} }
+    end
+
+
+    def pivot # todo
+        # let's 
+        kind_of_thing
+        time_period
+        first_seen_or_not
+    end
+
+
+
 
 
     def top_advertising_methods
